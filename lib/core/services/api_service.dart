@@ -41,7 +41,26 @@ class ApiService {
     final path = _path(url);
 
     if (path == '/admin/dashboard') {
-      return _supabase.rpc('admin_dashboard_overview');
+      final results = await Future.wait([
+        _supabase.from('profiles').select('id'),
+        _supabase.from('trails').select('id'),
+        _supabase.from('pois').select('id'),
+        _supabase.from('quizzes').select('id'),
+        _supabase.from('local_services').select('id'),
+        _supabase.from('sos_alerts').select('id').eq('status', 'active'),
+      ]);
+      return {
+        'summary': {
+          'users': (results[0] as List).length,
+          'trails': (results[1] as List).length,
+          'pois': (results[2] as List).length,
+          'quizzes': (results[3] as List).length,
+          'localServices': (results[4] as List).length,
+          'activities': 0,
+          'activeSosAlerts': (results[5] as List).length,
+        },
+        'recentActivities': [],
+      };
     }
 
     if (path == '/users') {

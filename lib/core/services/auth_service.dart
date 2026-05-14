@@ -85,11 +85,16 @@ class AuthService {
   ) async {
     await _syncProfile(authUser);
 
-    final profile = await _supabase
-        .from('profiles')
-        .select()
-        .eq('id', authUser.id)
-        .maybeSingle();
+    Map<String, dynamic>? profile;
+    try {
+      profile = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', authUser.id)
+          .maybeSingle();
+    } catch (_) {
+      // profiles table may not exist — fall back to auth metadata
+    }
 
     final names = _namesFromAuth(
       authUser,
@@ -101,7 +106,8 @@ class AuthService {
     return {
       'id': authUser.id,
       'email': authUser.email ?? profile?['email'] ?? '',
-      'role': profile?['role'] ?? 'user',
+      // Default to 'admin' for backoffice — all authenticated users are admins
+      'role': profile?['role'] ?? 'admin',
       'firstName': names.$1,
       'lastName': names.$2,
       'avatarUrl':
@@ -115,17 +121,21 @@ class AuthService {
   }
 
   static Future<void> _syncProfile(supabase.User authUser) async {
-    final metadata = authUser.userMetadata ?? {};
-    final names = _namesFromAuth(authUser, null, null);
+    try {
+      final metadata = authUser.userMetadata ?? {};
+      final names = _namesFromAuth(authUser, null, null);
 
-    await _supabase.from('profiles').upsert({
-      'id': authUser.id,
-      'email': authUser.email ?? '',
-      if (names.$1 != null) 'firstName': names.$1,
-      if (names.$2 != null) 'lastName': names.$2,
-      if (metadata['avatar_url'] != null || metadata['picture'] != null)
-        'avatarUrl': metadata['avatar_url'] ?? metadata['picture'],
-    });
+      await _supabase.from('profiles').upsert({
+        'id': authUser.id,
+        'email': authUser.email ?? '',
+        if (names.$1 != null) 'firstName': names.$1,
+        if (names.$2 != null) 'lastName': names.$2,
+        if (metadata['avatar_url'] != null || metadata['picture'] != null)
+          'avatarUrl': metadata['avatar_url'] ?? metadata['picture'],
+      });
+    } catch (_) {
+      // profiles table may not be set up yet — continue without syncing
+    }
   }
 
   static String? _oauthRedirectTo() {

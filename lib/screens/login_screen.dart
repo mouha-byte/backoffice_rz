@@ -48,6 +48,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _handleBypass() {
+    context.read<AuthProvider>().bypassAuth();
+    context.go('/dashboard');
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
@@ -459,7 +464,28 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 48),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: _handleBypass,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.textSecondary,
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.skip_next_outlined, size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Accéder directement sans connexion",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [

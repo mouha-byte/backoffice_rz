@@ -1,35 +1,22 @@
 class ApiConstants {
-  static const String baseUrl = 'http://localhost:3001/api';
+  static const String _base = '/api';
 
-  // Auth endpoints
-  static const String login = '$baseUrl/auth/login';
-  static const String register = '$baseUrl/auth/register';
-  static const String profile = '$baseUrl/auth/profile';
+  // Auth
+  static const String login = '$_base/auth/login';
+  static const String register = '$_base/auth/register';
+  static const String profile = '$_base/auth/profile';
 
-  // Trails endpoints
-  static const String trails = '$baseUrl/trails';
+  // Resources
+  static const String trails = '$_base/trails';
+  static const String pois = '$_base/pois';
+  static const String users = '$_base/users';
+  static const String quizzes = '$_base/quizzes';
+  static const String localServices = '$_base/local-services';
 
-  // POIs endpoints
-  static const String pois = '$baseUrl/pois';
+  // SOS
+  static const String sosAlerts = '$_base/sos/alerts';
+  static const String sosAlertsActive = '$_base/sos/alerts/active';
 
-  // Users endpoints
-  static const String users = '$baseUrl/users';
-
-  // Quizzes endpoints
-  static const String quizzes = '$baseUrl/quizzes';
-
-  // Local Services endpoints
-  static const String localServices = '$baseUrl/local-services';
-
-  // SOS endpoints
-  static const String sosAlerts = '$baseUrl/sos/alerts';
-  static const String sosAlertsActive = '$baseUrl/sos/alerts/active';
-
-  // Media endpoints
-  static const String mediaUploadImage = '$baseUrl/media/upload/image';
-  static const String mediaUploadVideo = '$baseUrl/media/upload/video';
-  static const String mediaUploadAudio = '$baseUrl/media/upload/audio';
-
-  // Admin endpoints
-  static const String adminDashboard = '$baseUrl/admin/dashboard';
+  // Admin
+  static const String adminDashboard = '$_base/admin/dashboard';
 }

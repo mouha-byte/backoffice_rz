@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../core/providers/auth_provider.dart';
 import '../core/constants/app_colors.dart';
 
+// Breakpoints
+const double _kDesktop = 1100;
+const double _kMobile = 700;
+
 class MainLayout extends StatefulWidget {
   final Widget child;
 
@@ -15,11 +19,28 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   bool _isExpanded = true;
+  bool _autoSet = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_autoSet) {
+      _autoSet = true;
+      final w = MediaQuery.of(context).size.width;
+      _isExpanded = w >= _kDesktop;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final currentPath = GoRouterState.of(context).matchedLocation;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < _kMobile;
+
+    if (isMobile) {
+      return _buildMobileScaffold(currentPath, authProvider);
+    }
 
     return Scaffold(
       body: Row(
@@ -27,12 +48,12 @@ class _MainLayoutState extends State<MainLayout> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: _isExpanded ? 280 : 80,
-            child: _buildSidebar(currentPath, authProvider),
+            child: _buildSidebar(currentPath, authProvider, _isExpanded),
           ),
           Expanded(
             child: Column(
               children: [
-                _buildTopBar(authProvider),
+                _buildTopBar(authProvider, currentPath, isMobile: false),
                 Expanded(
                   child: Container(
                     color: AppColors.background,
@@ -47,7 +68,46 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  Widget _buildSidebar(String currentPath, AuthProvider authProvider) {
+  // ── Mobile layout (Drawer) ────────────────────────────────────────────────
+
+  Widget _buildMobileScaffold(String currentPath, AuthProvider authProvider) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        shadowColor: Colors.black.withValues(alpha:0.06),
+        surfaceTintColor: Colors.white,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, color: AppColors.textSecondary),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        title: Text(
+          _getPageTitle(currentPath),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+      drawer: Drawer(
+        width: 280,
+        child: _buildSidebar(currentPath, authProvider, true),
+      ),
+      body: widget.child,
+    );
+  }
+
+  // ── Sidebar ───────────────────────────────────────────────────────────────
+
+  Widget _buildSidebar(
+    String currentPath,
+    AuthProvider authProvider,
+    bool isExpanded,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -55,7 +115,7 @@ class _MainLayoutState extends State<MainLayout> {
       ),
       child: Column(
         children: [
-          _buildHeader(),
+          _buildHeader(isExpanded),
           const SizedBox(height: 16),
           Expanded(
             child: ListView(
@@ -66,59 +126,67 @@ class _MainLayoutState extends State<MainLayout> {
                   label: 'Dashboard',
                   path: '/dashboard',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
                 _buildNavItem(
                   icon: Icons.route,
                   label: 'Trail Management',
                   path: '/trails',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
                 _buildNavItem(
                   icon: Icons.location_on,
                   label: 'Points of Interest',
                   path: '/pois',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
                 _buildNavItem(
                   icon: Icons.people,
                   label: 'User Management',
                   path: '/users',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
                 _buildNavItem(
                   icon: Icons.quiz,
                   label: 'Quiz Builder',
                   path: '/quizzes',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
                 _buildNavItem(
                   icon: Icons.store,
                   label: 'Local Economy',
                   path: '/local-services',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
                 _buildNavItem(
                   icon: Icons.warning,
                   label: 'SOS Alerts',
                   path: '/sos-alerts',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
                 _buildNavItem(
                   icon: Icons.settings,
                   label: 'Settings',
                   path: '/settings',
                   currentPath: currentPath,
+                  isExpanded: isExpanded,
                 ),
               ],
             ),
           ),
-          _buildUserProfile(authProvider),
+          _buildUserProfile(authProvider, isExpanded),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isExpanded) {
     return Container(
       height: 80,
       padding: const EdgeInsets.all(20),
@@ -133,7 +201,7 @@ class _MainLayoutState extends State<MainLayout> {
             ),
             child: const Icon(Icons.landscape, color: Colors.white, size: 24),
           ),
-          if (_isExpanded) ...[
+          if (isExpanded) ...[
             const SizedBox(width: 16),
             const Expanded(
               child: Text(
@@ -157,31 +225,38 @@ class _MainLayoutState extends State<MainLayout> {
     required String label,
     required String path,
     required String currentPath,
+    required bool isExpanded,
   }) {
     final isSelected = currentPath.startsWith(path);
     final selectedColor = AppColors.primaryDark;
-    final unselectedColor = const Color(0xFF64748B); // Slate grey
+    final unselectedColor = const Color(0xFF64748B);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.go(path),
+          onTap: () {
+            context.go(path);
+            // Close drawer if on mobile
+            if (MediaQuery.of(context).size.width < _kMobile) {
+              Navigator.of(context).pop();
+            }
+          },
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: EdgeInsets.symmetric(
-              horizontal: _isExpanded ? 16 : 0,
+              horizontal: isExpanded ? 16 : 0,
               vertical: 12,
             ),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppColors.primary.withOpacity(0.15)
+                  ? AppColors.primary.withValues(alpha:0.15)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
-              mainAxisAlignment: _isExpanded
+              mainAxisAlignment: isExpanded
                   ? MainAxisAlignment.start
                   : MainAxisAlignment.center,
               children: [
@@ -190,16 +265,15 @@ class _MainLayoutState extends State<MainLayout> {
                   color: isSelected ? selectedColor : unselectedColor,
                   size: 22,
                 ),
-                if (_isExpanded) ...[
+                if (isExpanded) ...[
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
                       label,
                       style: TextStyle(
                         color: isSelected ? selectedColor : unselectedColor,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w500,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w500,
                         fontSize: 14,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -214,17 +288,17 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  Widget _buildUserProfile(AuthProvider authProvider) {
+  Widget _buildUserProfile(AuthProvider authProvider, bool isExpanded) {
     return Container(
       padding: const EdgeInsets.all(20),
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider.withOpacity(0.5)),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha:0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -244,7 +318,7 @@ class _MainLayoutState extends State<MainLayout> {
               ),
             ),
           ),
-          if (_isExpanded) ...[
+          if (isExpanded) ...[
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -273,9 +347,7 @@ class _MainLayoutState extends State<MainLayout> {
             IconButton(
               onPressed: () async {
                 await authProvider.logout();
-                if (context.mounted) {
-                  context.go('/login');
-                }
+                if (mounted) context.go('/login');
               },
               icon: const Icon(
                 Icons.logout,
@@ -292,7 +364,11 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
-  Widget _buildTopBar(AuthProvider authProvider) {
+  Widget _buildTopBar(
+    AuthProvider authProvider,
+    String currentPath, {
+    required bool isMobile,
+  }) {
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -300,7 +376,7 @@ class _MainLayoutState extends State<MainLayout> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -316,12 +392,15 @@ class _MainLayoutState extends State<MainLayout> {
             onPressed: () => setState(() => _isExpanded = !_isExpanded),
           ),
           const SizedBox(width: 16),
-          Text(
-            _getPageTitle(GoRouterState.of(context).matchedLocation),
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+          Expanded(
+            child: Text(
+              _getPageTitle(currentPath),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

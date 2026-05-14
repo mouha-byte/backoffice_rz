@@ -1,15 +1,11 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import '../../core/providers/quizzes_provider.dart';
 import '../../core/models/quiz_model.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/api_constants.dart';
-import '../../core/services/api_service.dart';
+import '../../core/services/supabase_storage_service.dart';
 
 class QuestionDraft {
   final TextEditingController questionCtrl = TextEditingController();
@@ -140,54 +136,30 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
     });
 
     try {
-      final uri = Uri.parse(ApiConstants.mediaUploadImage);
-      final request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer ${ApiService.token}';
-      String mimeType = 'jpeg';
-      String ext = file.name.split('.').last.toLowerCase();
-      if (ext == 'png')
-        mimeType = 'png';
-      else if (ext == 'gif')
-        mimeType = 'gif';
-      else if (ext == 'webp')
-        mimeType = 'webp';
-
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          file.bytes!,
-          filename: file.name,
-          contentType: MediaType('image', mimeType),
-        ),
+      final ext = file.name.split('.').last.toLowerCase();
+      final contentType = switch (ext) {
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        _ => 'image/jpeg',
+      };
+      final url = await SupabaseStorageService.uploadBytes(
+        bucket: 'images',
+        fileName: file.name,
+        bytes: file.bytes!,
+        contentType: contentType,
       );
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final body = jsonDecode(response.body);
-        setState(() {
-          q.mediaUrl = body['url'];
-          q.isUploading = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Photo uploaded!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-        }
-      } else {
-        setState(() => q.isUploading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Upload failed: ${response.body}'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
+      setState(() {
+        q.mediaUrl = url;
+        q.isUploading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo uploaded!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
       }
     } catch (e) {
       setState(() => q.isUploading = false);

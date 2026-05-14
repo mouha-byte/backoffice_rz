@@ -8,10 +8,8 @@ import 'package:latlong2/latlong.dart';
 import '../../core/providers/trails_provider.dart';
 import '../../core/models/trail_model.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/api_constants.dart';
-import '../../core/services/api_service.dart';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
+import '../../core/services/supabase_storage_service.dart';
 
 class TrailsScreen extends StatefulWidget {
   const TrailsScreen({super.key});
@@ -323,54 +321,30 @@ class _TrailsScreenState extends State<TrailsScreen> {
     setState(() => _isUploadingImage = true);
 
     try {
-      final uri = Uri.parse(ApiConstants.mediaUploadImage);
-      final request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer ${ApiService.token}';
-      String mimeType = 'jpeg';
-      String ext = file.name.split('.').last.toLowerCase();
-      if (ext == 'png')
-        mimeType = 'png';
-      else if (ext == 'gif')
-        mimeType = 'gif';
-      else if (ext == 'webp')
-        mimeType = 'webp';
-
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          file.bytes!,
-          filename: file.name,
-          contentType: MediaType('image', mimeType),
-        ),
+      final ext = file.name.split('.').last.toLowerCase();
+      final contentType = switch (ext) {
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        _ => 'image/jpeg',
+      };
+      final url = await SupabaseStorageService.uploadBytes(
+        bucket: 'images',
+        fileName: file.name,
+        bytes: file.bytes!,
+        contentType: contentType,
       );
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final body = jsonDecode(response.body);
-        final url = body['url'] as String;
-        setState(() {
-          _imageUrls.add(url);
-          _isUploadingImage = false;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Image uploadée avec succès!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-        }
-      } else {
-        setState(() => _isUploadingImage = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Upload échoué: ${response.body}'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
+      setState(() {
+        _imageUrls.add(url);
+        _isUploadingImage = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image uploadée avec succès!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
       }
     } catch (e) {
       setState(() => _isUploadingImage = false);

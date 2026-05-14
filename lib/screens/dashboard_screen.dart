@@ -51,29 +51,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final stats = provider.data?.summary;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildStatsGrid(stats),
-          const SizedBox(height: 24),
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth < 1000;
+        final padding = isTablet ? 16.0 : 24.0;
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(padding),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(flex: 2, child: _buildChartCard(stats)),
-              const SizedBox(width: 24),
-              Expanded(child: _buildSosAlertCard(stats?.activeSosAlerts ?? 0)),
+              _buildStatsGrid(stats, isTablet: isTablet),
+              SizedBox(height: padding),
+              if (isTablet)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildChartCard(stats),
+                    const SizedBox(height: 16),
+                    _buildSosAlertCard(stats?.activeSosAlerts ?? 0),
+                  ],
+                )
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: _buildChartCard(stats)),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: _buildSosAlertCard(stats?.activeSosAlerts ?? 0),
+                    ),
+                  ],
+                ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildStatsGrid(dynamic stats) {
+  Widget _buildStatsGrid(dynamic stats, {bool isTablet = false}) {
     return GridView.count(
-      crossAxisCount: 4,
+      crossAxisCount: isTablet ? 2 : 4,
       mainAxisSpacing: 16,
       crossAxisSpacing: 16,
       childAspectRatio: 1.5,
@@ -133,7 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -146,7 +164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 28),
@@ -181,7 +199,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -314,7 +332,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: activeAlerts > 0
-            ? AppColors.error.withOpacity(0.1)
+            ? AppColors.error.withValues(alpha:0.1)
             : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: activeAlerts > 0
@@ -322,7 +340,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha:0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

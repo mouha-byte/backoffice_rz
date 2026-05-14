@@ -105,6 +105,22 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void bypassAuth() {
+    _user = UserModel(
+      id: 'bypass',
+      email: 'admin@ecoguide.local',
+      role: 'admin',
+      firstName: 'Admin',
+      lastName: null,
+      avatarUrl: null,
+      isActive: true,
+      createdAt: DateTime.now(),
+    );
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   void _listenToSupabaseAuth() {
     _authSubscription = supabase.Supabase.instance.client.auth.onAuthStateChange
         .listen((data) async {

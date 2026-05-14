@@ -1,17 +1,13 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import '../../core/providers/pois_provider.dart';
 import '../../core/models/poi_model.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/api_constants.dart';
-import '../../core/services/api_service.dart';
+import '../../core/services/supabase_storage_service.dart';
 
 class PoisScreen extends StatefulWidget {
   const PoisScreen({super.key});
@@ -155,46 +151,23 @@ class _PoisScreenState extends State<PoisScreen> {
     });
 
     try {
-      final uri = Uri.parse(ApiConstants.mediaUploadImage);
-      final request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer ${ApiService.token}';
-      String mimeType = 'jpeg';
-      String ext = file.name.split('.').last.toLowerCase();
-      if (ext == 'png')
-        mimeType = 'png';
-      else if (ext == 'gif')
-        mimeType = 'gif';
-      else if (ext == 'webp')
-        mimeType = 'webp';
-
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          file.bytes!,
-          filename: file.name,
-          contentType: MediaType('image', mimeType),
-        ),
+      final ext = file.name.split('.').last.toLowerCase();
+      final contentType = switch (ext) {
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp',
+        _ => 'image/jpeg',
+      };
+      final url = await SupabaseStorageService.uploadBytes(
+        bucket: 'images',
+        fileName: file.name,
+        bytes: file.bytes!,
+        contentType: contentType,
       );
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final body = jsonDecode(response.body);
-        setState(() {
-          _mediaUrl = body['url'];
-          _isUploading = false;
-        });
-      } else {
-        setState(() => _isUploading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Upload failed: ${response.body}'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      }
+      setState(() {
+        _mediaUrl = url;
+        _isUploading = false;
+      });
     } catch (e) {
       setState(() => _isUploading = false);
       if (mounted) {
